@@ -20,7 +20,6 @@ void Adc_init() {
   ADCSRA = 0x87;  //set adc enable and set prescaler
 }
 uint16_t Adc_read(char ch) {
-  char busy;
   ADMUX &= ~(0xF << MUX0);  //set pin0-3 bit x
   ADMUX |= ch;
   ADCSRA |= (1 << ADSC);  //start conversation ADSC
@@ -48,7 +47,7 @@ ISR(INT0_vect) {
   if (debounceButton(2) == 0) {
     MODE--;
     PORTD &= ~(1 << PD5);
-    if(MODE == 0 || MODE > 254){
+    if(MODE > 254){
       MODE = 3;
       PORTD |= (1 << PD5);
     }
@@ -64,7 +63,6 @@ ISR(INT1_vect) {
       MODE = 0;
       PORTD &= ~(1<<PD5);
     }
-  Serial.println(MODE);  
   }
 }
 /////////////////////////////////////////////
@@ -89,9 +87,9 @@ float Volt() {
 float Resistor() {
   float vout = Mean(2);
   float resistor = R2_R * ((float)(5.0 / vout) - 1);
-   if (resistor > 1000000) {
-     return 0;
-   } else {
+    if (resistor > 10000000) {
+      return 0;
+    } else {
     return resistor;
   }
 }
@@ -118,7 +116,9 @@ float Diode(){
 }  
 /////////////////////////////////////////////////////////
 void ControlOled(uint8_t textsize,int x,int y,const char* sentence,bool enter){
+  if(enter == 0){
   display.clearDisplay();
+  }
   display.setTextSize(textsize);
   display.setTextColor(WHITE);
   display.setCursor(x,y);
@@ -180,22 +180,27 @@ void loop() {
     ControlOled(1,0,0,"ContinuityCheck",0);
     ControlOled(2,50,15,ContinuityCheck(Measure[1]),1);
     display.display();
-    delay(300);
+    delay(10);
   }
   else if(MODE == 2){
-    Measure[2] = Resistor();
+    Measure[2] = Resistor(); 
     ControlOled(1,0,0,"Resistor",0);
-    if(Measure[2] > 1000 && Measure[2] < 100000){
+    if(Measure[2] > 1000 && Measure[2] < 1000000){
       Measure[2] /= 1000.0;
       display.setCursor(80,15);
       display.print("Kohm"); //unit
-    } else {
+    } else if (Measure[2] > 1000000 && Measure[2] < 10000000){
+      Measure[2] /= 1000000.0;
+      display.setCursor(80,15);
+      display.print("Mohm"); //unit
+    }else {
       display.setCursor(80,15);
       display.print("ohm"); //unit
     }
     ControlOled_value(2,30,15,Measure[2],1);
-    display.display();  
+    display.display(); 
     Serial.println(Measure[2]);
+    delay(500);
   }
   else if(MODE == 3){
     Measure[3] = Diode();
